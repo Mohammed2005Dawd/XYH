@@ -664,6 +664,22 @@
                 printing: [],
                 random: []
             };
+            // Diagnostic logging to help debug missing images
+            try {
+                console.groupCollapsed('Products debug');
+                console.log('products (raw from localStorage):', products);
+                const counts = { total: 0, withImage: 0, withoutImage: 0, stripped: 0 };
+                Object.values(products).flat().forEach(p => {
+                    counts.total++;
+                    if (p.image && p.image.length) counts.withImage++;
+                    else counts.withoutImage++;
+                    if (p._imageStripped) counts.stripped++;
+                });
+                console.log('product image counts:', counts);
+                console.groupEnd();
+            } catch (e) {
+                console.error('Error logging products debug:', e);
+            }
             const allProducts = [...products.gym, ...products.dresses, ...products.printing, ...products.random];
             displayProducts(allProducts, 'productsGrid');
             
@@ -678,16 +694,20 @@
         function displayProducts(productsArray, containerId) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
-            
+
             productsArray.forEach(product => {
                 const discount = product.originalPrice > product.price ? 
                     Math.round((1 - product.price / product.originalPrice) * 100) : 0;
-                
+
+                // Use a local placeholder when image is missing or was stripped to avoid broken images / quota issues
+                const placeholder = './assets/placeholder.svg';
+                const imgSrc = (product.image && product.image.length) ? product.image : placeholder;
+
                 const productCard = document.createElement('div');
                 productCard.className = 'product-card';
                 productCard.innerHTML = `
                     <div class="product-image-container">
-                        <img src="${product.image}" alt="${product.name}" class="product-image">
+                        <img src="${imgSrc}" alt="${product.name}" class="product-image" onerror="this.onerror=null;this.src='${placeholder}';">
                         ${discount > 0 ? `<div class="discount-tag">${discount}% خصم</div>` : ''}
                     </div>
                     <div class="product-info">
