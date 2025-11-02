@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - الطلبات - متجر XYH</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .admin-panel {
+            background-color: white;
+            padding: 30px;
+            margin: 40px 0;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .admin-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #3b82f6;
+            font-size: 2rem;
+        }
+
+        .section-title {
+            text-align: center;
+            margin: 40px 0 20px 0;
+            color: #3b82f6;
+            font-size: 1.8rem;
+        }
+
+        .orders-list {
+            margin-top: 20px;
+        }
+
+        .order-item {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .order-id {
+            font-weight: bold;
+            color: #3b82f6;
+        }
+
+        .order-date {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .order-status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+
+        .status-processing {
+            background-color: #dbeafe;
+            color: #2563eb;
+        }
+
+        .status-shipped {
+            background-color: #d1fae5;
+            color: #059669;
+        }
+
+        .status-delivered {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+
+        .order-customer {
+            margin-bottom: 15px;
+        }
+
+        .customer-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            margin-bottom: 8px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .info-value {
+            color: #6b7280;
+        }
+
+        .order-items {
+            margin-bottom: 15px;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        .order-total {
+            font-weight: bold;
+            text-align: left;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f1f5f9;
+            border-radius: 6px;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-success {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #059669;
+        }
+
+        .btn-warning {
+            background-color: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background-color: #d97706;
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .no-orders {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .order-details {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .order-notes {
+            background-color: #f8fafc;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .order-notes .info-label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .order-notes .info-value {
+            display: block;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .order-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .order-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="admin-title">لوحة التحكم - الطلبات</h1>
+        
+        <div class="admin-panel">
+            <h2 class="section-title">قائمة الطلبات</h2>
+            <div id="ordersList" class="orders-list">
+                <!-- Orders will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Format price helper
+        function formatPrice(price) {
+            try { return new Intl.NumberFormat('ar-IQ').format(price); } catch (e) { return price; }
+        }
+        // Initialize orders from localStorage
+        let orders = JSON.parse(localStorage.getItem('orders')) || [
+            {
+                id: 1,
+                date: '2024-01-15',
+                customer: {
+                    name: 'أحمد محمد',
+                    phone: '0501234567',
+                    address: 'الرياض، شارع التخصصي'
+                },
+                items: [
+                    { name: 'تيشرت جيم اسود', price: 45, quantity: 2 },
+                    { name: 'شورت جيم رياضي', price: 60, quantity: 1 }
+                ],
+                total: 150,
+                status: 'pending',
+                notes: 'يرجى التوصيل في أسرع وقت'
+            },
+            {
+                id: 2,
+                date: '2024-01-14',
+                customer: {
+                    name: 'فاطمة علي',
+                    phone: '0559876543',
+                    address: 'جدة، شارع الأمير محمد'
+                },
+                items: [
+                    { name: 'درسة ريال مدريد', price: 90, quantity: 1 },
+                    { name: 'قبعة رياضية', price: 35, quantity: 1 }
+                ],
+                total: 125,
+                status: 'processing',
+                notes: ''
+            }
+        ];
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrdersList();
+        });
+
+        // Load orders list
+        function loadOrdersList() {
+            const container = document.getElementById('ordersList');
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="no-orders"><p>لا توجد طلبات حالياً</p></div>';
+                return;
+            }
+            
+            let ordersHTML = '';
+            
+            orders.forEach(order => {
+                const statusClass = `status-${order.status}`;
+                const statusText = getStatusText(order.status);
+                
+                let itemsHTML = '';
+                order.items.forEach(item => {
+                    itemsHTML += `
+                        <div class="item">
+                            <span>${item.name} × ${item.quantity}</span>
+                            <span>${(item.price * item.quantity).toFixed(2)} د.ع</span>
+                        </div>
+                    `;
+                });
+                
+                ordersHTML += `
+                    <div class="order-item">
+                        <div class="order-header">
+                            <div>
+                                <span class="order-id">الطلب #${order.id}</span>
+                                <span class="order-date">(${order.date})</span>
+                            </div>
+                            <span class="order-status ${statusClass}">${statusText}</span>
+                        </div>
+                        
+                        <div class="order-customer">
+                            <div class="customer-info">
+                                <div class="info-item">
+                                    <div class="info-label">الاسم:</div>
+                                    <div class="info-value">${order.customer.name}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">الهاتف:</div>
+                                    <div class="info-value">${order.customer.phone}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">العنوان:</div>
+                                    <div class="info-value">${order.customer.address}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="order-items">
+                            ${itemsHTML}
+                        </div>
+                        
+                        <div class="order-total">
+                            المجموع: ${order.total.toFixed(2)} د.ع
+                        </div>
+                        
+                        ${order.notes ? `
+                        <div class="order-notes">
+                            <div class="info-label">ملاحظات العميل:</div>
+                            <div class="info-value">${order.notes}</div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="order-actions">
+                            <button class="btn btn-primary" onclick="updateOrderStatus(${order.id}, 'processing')">جاري المعالجة</button>
+                            <button class="btn btn-warning" onclick="updateOrderStatus(${order.id}, 'shipped')">تم الشحن</button>
+                            <button class="btn btn-success" onclick="updateOrderStatus(${order.id}, 'delivered')">تم التوصيل</button>
+                            <button class="btn" onclick="sendOrderWhatsApp(${order.id})">إرسال عبر واتساب</button>
+                            <button class="btn btn-danger" onclick="deleteOrder(${order.id})">حذف الطلب</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = ordersHTML;
+        }
+
+        // Get status text
+        function getStatusText(status) {
+            switch(status) {
+                case 'pending': return 'معلق';
+                case 'processing': return 'جاري المعالجة';
+                case 'shipped': return 'تم الشحن';
+                case 'delivered': return 'تم التوصيل';
+                default: return 'غير معروف';
+            }
+        }
+
+        // Update order status
+        function updateOrderStatus(orderId, newStatus) {
+            const orderIndex = orders.findIndex(order => order.id === orderId);
+            if (orderIndex !== -1) {
+                orders[orderIndex].status = newStatus;
+                saveOrders();
+                loadOrdersList();
+                alert('تم تحديث حالة الطلب بنجاح!');
+            }
+        }
+
+        // Delete order
+        function deleteOrder(orderId) {
+            if (confirm('هل أنت متأكد من حذف هذا الطلب؟')) {
+                orders = orders.filter(order => order.id !== orderId);
+                saveOrders();
+                loadOrdersList();
+                alert('تم حذف الطلب بنجاح!');
+            }
+        }
+
+        // Save orders to localStorage
+        function saveOrders() {
+            localStorage.setItem('orders', JSON.stringify(orders));
+        }
+
+        // Send order via WhatsApp (build message and open wa.me link)
+        function sendOrderWhatsApp(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return alert('الطلب غير موجود');
+
+            let orderDetails = `🛍️ متجر XYH\n\n`;
+            orderDetails += `👤 الاسم: ${order.customer.name}\n`;
+            orderDetails += `📱 الهاتف: ${order.customer.phone}\n`;
+            orderDetails += `📍 العنوان: ${order.customer.address}\n`;
+            if (order.notes) orderDetails += `📝 ملاحظات: ${order.notes}\n\n`;
+            orderDetails += `📋 تفاصيل الطلب:\n`;
+
+            order.items.forEach(item => {
+                orderDetails += `- ${item.name}: ${item.quantity} × ${formatPrice(item.price)} د.ع = ${formatPrice(item.price * item.quantity)} د.ع\n`;
+            });
+
+            orderDetails += `\n💰 المجموع: ${formatPrice(order.total)} د.ع`;
+
+            const whatsappMessage = encodeURIComponent(orderDetails);
+
+            // normalize phone to international format for WhatsApp
+            let cleanedPhone = (order.customer.phone || '').replace(/\s+/g, '');
+            if (cleanedPhone.startsWith('+')) cleanedPhone = cleanedPhone.slice(1);
+            if (cleanedPhone.startsWith('0')) cleanedPhone = '964' + cleanedPhone.slice(1);
+            if (!cleanedPhone.startsWith('964')) cleanedPhone = '964' + cleanedPhone;
+
+            const whatsappLink = `https://wa.me/${cleanedPhone}?text=${whatsappMessage}`;
+            try {
+                const win = window.open(whatsappLink, '_blank');
+                if (!win) throw new Error('popup-blocked');
+            } catch (err) {
+                console.warn('Could not open WhatsApp link, providing fallback link to copy.', err);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(whatsappLink).then(() => {
+                        alert('تم نسخ رابط واتساب للطلب إلى الحافظة. يمكنك لصقه في المتصفح أو إرسال الرابط يدويًا.');
+                    }).catch(() => {
+                        prompt('انسخ رابط واتساب هذا وأرسله يدوياً:', whatsappLink);
+                    });
+                } else {
+                    prompt('انسخ رابط واتساب هذا وأرسله يدوياً:', whatsappLink);
+                }
+            }
+        }
+
+        // [ملاحظة للربط] 
+        // يمكنك استخدام الدوال التالية للربط مع نظام إدارة الطلبات:
+        // - updateOrderStatus(): تُستخدم عند تحديث حالة الطلب
+        // - deleteOrder(): تُستخدم عند حذف الطلب
+        // - saveOrders(): تُستخدم لحفظ الطلبات في قاعدة البيانات
+        // - loadOrdersList(): تُستخدم لتحميل قائمة الطلبات من قاعدة البيانات
+        // 
+        // مثال على كيفية الربط مع واجهة برمجية (API):
+        // function updateOrderOnServer(orderId, status) {
+        //     fetch(`/api/orders/${orderId}`, {
+        //         method: 'PUT',
+        //         headers: {
+        //             'Content-Type': 'application/json',
+        //         },
+        //         body: JSON.stringify({ status: status })
+        //     })
+        //     .then(response => response.json())
+        //     .then(data => console.log('Order updated:', data))
+        //     .catch(error => console.error('Error:', error));
+        // }
+    </script>
+</body>
+</html>
+
