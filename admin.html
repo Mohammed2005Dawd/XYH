@@ -442,6 +442,48 @@
             });
         })();
 
+        // --- Remote JSON bin support (jsonbin.io) ---
+        // To enable, set window.__REMOTE_API_CONFIG = { type: 'jsonbin', binId: '...', apiKey: 'YOUR_MASTER_KEY' } before this script runs.
+        (function(){
+            window.__XYH_remote = window.__XYH_remote || {};
+            window.__XYH_remote.saveProducts = async function(productsObj) {
+                try {
+                    const cfg = window.__REMOTE_API_CONFIG;
+                    if (!cfg || cfg.type !== 'jsonbin' || !cfg.binId || !cfg.apiKey) return Promise.resolve(false);
+                    const url = `https://api.jsonbin.io/v3/b/${cfg.binId}`;
+                    const res = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': cfg.apiKey
+                        },
+                        body: JSON.stringify(productsObj)
+                    });
+                    if (!res.ok) throw new Error('remote save failed: ' + res.status);
+                    return true;
+                } catch (err) {
+                    console.warn('remote saveProducts error:', err);
+                    return false;
+                }
+            };
+
+            window.__XYH_remote.loadProducts = async function() {
+                try {
+                    const cfg = window.__REMOTE_API_CONFIG;
+                    if (!cfg || cfg.type !== 'jsonbin' || !cfg.binId) return null;
+                    const url = `https://api.jsonbin.io/v3/b/${cfg.binId}/latest`;
+                    const res = await fetch(url, { method: 'GET' });
+                    if (!res.ok) throw new Error('remote load failed: ' + res.status);
+                    const payload = await res.json();
+                    // jsonbin v3 wraps content in payload.record
+                    return payload && payload.record ? payload.record : null;
+                } catch (err) {
+                    console.warn('remote loadProducts error:', err);
+                    return null;
+                }
+            };
+        })();
+
         // Initialize data from localStorage or create default data
         let products = JSON.parse(localStorage.getItem('products')) || {
             gym: [],
@@ -645,6 +687,18 @@
                 }
             })();
 
+            // If remote JSON bin is configured, push the whole products object there as well
+            (async function(){
+                try {
+                    if (window.__XYH_remote && typeof window.__XYH_remote.saveProducts === 'function') {
+                        const ok = await window.__XYH_remote.saveProducts(products);
+                        if (ok) console.log('Saved products to remote json bin');
+                    }
+                } catch (err) {
+                    console.warn('Failed to save products to remote:', err);
+                }
+            })();
+
             // Reset form
             document.getElementById('addProductForm').reset();
             document.getElementById('productPreview').innerHTML = '<p>معاينة الصورة</p>';
@@ -740,6 +794,15 @@
                 } catch (err) {
                     console.warn('Failed to delete product from Firestore:', err);
                 }
+            })();
+            // push updated products to remote json bin if configured
+            (async function(){
+                try {
+                    if (window.__XYH_remote && typeof window.__XYH_remote.saveProducts === 'function') {
+                        await window.__XYH_remote.saveProducts(products);
+                        console.log('Updated remote json bin after delete');
+                    }
+                } catch (err) { console.warn('Failed to update remote after delete:', err); }
             })();
         }
 
@@ -913,6 +976,16 @@
                 } catch (err) {
                     console.warn('Failed to update product image in Firestore:', err);
                 }
+            })();
+
+            // update remote json bin as well
+            (async function(){
+                try {
+                    if (window.__XYH_remote && typeof window.__XYH_remote.saveProducts === 'function') {
+                        await window.__XYH_remote.saveProducts(products);
+                        console.log('Updated remote json bin after image change');
+                    }
+                } catch (err) { console.warn('Failed to update remote after image change:', err); }
             })();
 
             alert('تم تحديث صورة المنتج. يجب أن تظهر الآن في واجهة المتجر بعد تحديث الصفحة.');

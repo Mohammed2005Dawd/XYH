@@ -654,6 +654,91 @@
             }).catch(e => { console.warn('Could not load Firebase libs:', e); window.__XYH_db = null; });
         })();
 
+            // --- JSONBin remote loader (optional) ---
+            (function(){
+                // window.__REMOTE_API_CONFIG = { type: 'jsonbin', binId: 'YOUR_BIN_ID', apiKey: 'YOUR_MASTER_KEY', autoPoll: false, pollInterval: 30 }
+                const cfg = window.__REMOTE_API_CONFIG || null;
+                window.__XYH_remote = window.__XYH_remote || {};
+
+                async function loadRemoteProducts() {
+                    if (!cfg || cfg.type !== 'jsonbin' || !cfg.binId) return null;
+                    const url = `https://api.jsonbin.io/v3/b/${cfg.binId}/latest`;
+                    try {
+                        const headers = { 'Accept': 'application/json' };
+                        if (cfg.apiKey) headers['X-Master-Key'] = cfg.apiKey;
+                        const res = await fetch(url, { method: 'GET', headers });
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        const json = await res.json();
+                        // jsonbin returns data in `record` for v3; fall back to root
+                        const record = json.record || json || null;
+                        if (!record) throw new Error('No record in jsonbin response');
+
+                        // if record contains the `products` object, use it; otherwise assume the record is the products object
+                        const remoteProducts = record.products || record;
+                        if (!remoteProducts || typeof remoteProducts !== 'object') throw new Error('Invalid products format from remote');
+
+                        // persist locally and re-render
+                        localStorage.setItem('products', JSON.stringify(remoteProducts));
+                        products = remoteProducts;
+                        console.log('Loaded products from jsonbin:', remoteProducts);
+
+                        const allProducts = [...products.gym || [], ...products.dresses || [], ...products.printing || [], ...products.random || []];
+                        displayProducts(allProducts, 'productsGrid');
+                        displayProducts(products.gym || [], 'gymProducts');
+                        displayProducts(products.dresses || [], 'dressesProducts');
+                        displayProducts(products.printing || [], 'printingProducts');
+                        displayProducts(products.random || [], 'randomProducts');
+
+                        return remoteProducts;
+                    } catch (err) {
+                        console.warn('Failed to load remote products from jsonbin:', err);
+                        return null;
+                    }
+                }
+
+                window.__XYH_remote.loadProducts = loadRemoteProducts;
+
+                // Add a small sync button next to cart to allow manual refresh from remote
+                function addSyncButton() {
+                    try {
+                        const headerActions = document.querySelector('.header-actions');
+                        if (!headerActions) return;
+                        if (document.getElementById('syncRemoteBtn')) return; // already added
+                        const btn = document.createElement('button');
+                        btn.id = 'syncRemoteBtn';
+                        btn.textContent = 'مزامنة';
+                        btn.style.padding = '8px 10px';
+                        btn.style.borderRadius = '8px';
+                        btn.style.border = '1px solid #d1d5db';
+                        btn.style.background = 'white';
+                        btn.style.cursor = 'pointer';
+                        btn.onclick = async () => {
+                            btn.disabled = true;
+                            btn.textContent = 'جارٍ المزامنة...';
+                            await loadRemoteProducts();
+                            btn.textContent = 'تم';
+                            setTimeout(() => { btn.textContent = 'مزامنة'; btn.disabled = false; }, 1200);
+                        };
+                        headerActions.insertBefore(btn, headerActions.firstChild);
+                    } catch (e) { console.warn('Could not add sync button:', e); }
+                }
+
+                // auto-poll support if enabled in config
+                if (cfg && cfg.type === 'jsonbin') {
+                    // add button immediately (DOMContentLoaded may not have run yet — safe to call)
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', addSyncButton);
+                    } else addSyncButton();
+
+                    if (cfg.autoPoll) {
+                        const interval = (cfg.pollInterval && Number(cfg.pollInterval) > 5) ? Number(cfg.pollInterval) * 1000 : 30000;
+                        setInterval(() => {
+                            loadRemoteProducts();
+                        }, interval);
+                    }
+                }
+            })();
+
         // Format price function
         function formatPrice(price) {
             return new Intl.NumberFormat('ar-IQ').format(price);
