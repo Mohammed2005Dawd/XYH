@@ -448,19 +448,40 @@
             window.__XYH_remote = window.__XYH_remote || {};
             window.__XYH_remote.saveProducts = async function(productsObj) {
                 try {
-                    const cfg = window.__REMOTE_API_CONFIG;
-                    if (!cfg || cfg.type !== 'jsonbin' || !cfg.binId || !cfg.apiKey) return Promise.resolve(false);
-                    const url = `https://api.jsonbin.io/v3/b/${cfg.binId}`;
-                    const res = await fetch(url, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': cfg.apiKey
-                        },
-                        body: JSON.stringify(productsObj)
-                    });
-                    if (!res.ok) throw new Error('remote save failed: ' + res.status);
-                    return true;
+                    // prefer explicit global, otherwise read saved config from localStorage
+                    const cfg = window.__REMOTE_API_CONFIG || (function(){ try { return JSON.parse(localStorage.getItem('remoteConfig')||'null'); } catch(e){ return {}; } })() || {};
+                    // Prefer proxy URL if provided (keeps master key off the client)
+                    if (cfg.proxyUrl) {
+                        try {
+                            const res = await fetch(cfg.proxyUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ products: productsObj })
+                            });
+                            return res.ok;
+                        } catch (proxyErr) {
+                            console.warn('proxy saveProducts failed, falling back to jsonbin:', proxyErr);
+                            // fallthrough to jsonbin attempt
+                        }
+                    }
+
+                    // Fallback: direct jsonbin write (requires apiKey on client - not recommended in production)
+                    if (cfg.type === 'jsonbin' && cfg.binId && cfg.apiKey) {
+                        const url = `https://api.jsonbin.io/v3/b/${cfg.binId}`;
+                        const res = await fetch(url, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Master-Key': cfg.apiKey
+                            },
+                            // wrap products in an object to be explicit, proxy examples below expect { products }
+                            body: JSON.stringify({ products: productsObj })
+                        });
+                        if (!res.ok) throw new Error('remote save failed: ' + res.status);
+                        return true;
+                    }
+
+                    return false;
                 } catch (err) {
                     console.warn('remote saveProducts error:', err);
                     return false;
@@ -469,7 +490,8 @@
 
             window.__XYH_remote.loadProducts = async function() {
                 try {
-                    const cfg = window.__REMOTE_API_CONFIG;
+                    // prefer explicit global, otherwise read saved config from localStorage
+                    const cfg = window.__REMOTE_API_CONFIG || (function(){ try { return JSON.parse(localStorage.getItem('remoteConfig')||'null'); } catch(e){ return null; } })();
                     if (!cfg || cfg.type !== 'jsonbin' || !cfg.binId) return null;
                     const url = `https://api.jsonbin.io/v3/b/${cfg.binId}/latest`;
                     const res = await fetch(url, { method: 'GET' });
@@ -482,6 +504,33 @@
                     return null;
                 }
             };
+
+            // small UI helper: add a floating button so admin can quickly set remote config without editing files
+            document.addEventListener('DOMContentLoaded', function(){
+                try {
+                    if (document.getElementById('adminRemoteConfigBtn')) return;
+                    const btn = document.createElement('button');
+                    btn.id = 'adminRemoteConfigBtn';
+                    btn.textContent = 'تكوين المزامنة';
+                    btn.style.position = 'fixed';
+                    btn.style.bottom = '18px';
+                    btn.style.right = '18px';
+                    btn.style.zIndex = 9999;
+                    btn.className = 'btn';
+                    btn.onclick = function() {
+                        const existing = (window.__REMOTE_API_CONFIG && window.__REMOTE_API_CONFIG.binId) || (function(){ try { const r=JSON.parse(localStorage.getItem('remoteConfig')||'null'); return r && r.binId; } catch(e){ return ''; } })() || '';
+                        const bin = prompt('أدخل binId من jsonbin (ترك فارغ للتعطيل):', existing);
+                        if (!bin) { localStorage.removeItem('remoteConfig'); window.__REMOTE_API_CONFIG = null; alert('تم تعطيل المزامنة'); return; }
+                        const existingKey = (window.__REMOTE_API_CONFIG && window.__REMOTE_API_CONFIG.apiKey) || (function(){ try { const r=JSON.parse(localStorage.getItem('remoteConfig')||'null'); return r && r.apiKey; } catch(e){ return ''; } })() || '';
+                        const key = prompt('أدخل X-Master-Key (master key) من jsonbin:', existingKey);
+                        const cfg = { type: 'jsonbin', binId: bin.trim(), apiKey: key ? key.trim() : '', autoPoll: false };
+                        localStorage.setItem('remoteConfig', JSON.stringify(cfg));
+                        window.__REMOTE_API_CONFIG = cfg;
+                        alert('تم حفظ إعدادات المزامنة محلياً. سيتم استخدامها عند الحفظ التالي.');
+                    };
+                    document.body.appendChild(btn);
+                } catch (e) { console.warn('Could not add admin remote config button:', e); }
+            });
         })();
 
         // Initialize data from localStorage or create default data

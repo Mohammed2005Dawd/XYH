@@ -657,10 +657,39 @@
             // --- JSONBin remote loader (optional) ---
             (function(){
                 // window.__REMOTE_API_CONFIG = { type: 'jsonbin', binId: 'YOUR_BIN_ID', apiKey: 'YOUR_MASTER_KEY', autoPoll: false, pollInterval: 30 }
-                const cfg = window.__REMOTE_API_CONFIG || null;
+                // prefer explicit global, otherwise read saved config from localStorage
+                const cfg = window.__REMOTE_API_CONFIG || (function(){
+                    try { return JSON.parse(localStorage.getItem('remoteConfig') || 'null'); } catch(e){ return null; }
+                })();
                 window.__XYH_remote = window.__XYH_remote || {};
 
                 async function loadRemoteProducts() {
+                    if (!cfg) return null;
+                    // If proxy is configured, use it (recommended)
+                    if (cfg.proxyUrl) {
+                        try {
+                            const res = await fetch(cfg.proxyUrl, { method: 'GET' });
+                            if (!res.ok) throw new Error('Proxy HTTP ' + res.status);
+                            const json = await res.json();
+                            const remoteProducts = json.products || json;
+                            if (!remoteProducts || typeof remoteProducts !== 'object') throw new Error('Invalid products format from proxy');
+                            localStorage.setItem('products', JSON.stringify(remoteProducts));
+                            products = remoteProducts;
+                            console.log('Loaded products from proxy:', remoteProducts);
+                            const allProducts = [...products.gym || [], ...products.dresses || [], ...products.printing || [], ...products.random || []];
+                            displayProducts(allProducts, 'productsGrid');
+                            displayProducts(products.gym || [], 'gymProducts');
+                            displayProducts(products.dresses || [], 'dressesProducts');
+                            displayProducts(products.printing || [], 'printingProducts');
+                            displayProducts(products.random || [], 'randomProducts');
+                            return remoteProducts;
+                        } catch (err) {
+                            console.warn('Failed to load remote products from proxy:', err);
+                            // fall through to jsonbin attempt if configured
+                        }
+                    }
+
+                    // Fallback to jsonbin direct read
                     if (!cfg || cfg.type !== 'jsonbin' || !cfg.binId) return null;
                     const url = `https://api.jsonbin.io/v3/b/${cfg.binId}/latest`;
                     try {
@@ -725,10 +754,10 @@
 
                 // auto-poll support if enabled in config
                 if (cfg && cfg.type === 'jsonbin') {
-                    // add button immediately (DOMContentLoaded may not have run yet — safe to call)
+                    // add buttons immediately (DOMContentLoaded may not have run yet — safe to call)
                     if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', addSyncButton);
-                    } else addSyncButton();
+                        document.addEventListener('DOMContentLoaded', () => { addRemoteConfigButton(); addSyncButton(); });
+                    } else { addRemoteConfigButton(); addSyncButton(); }
 
                     if (cfg.autoPoll) {
                         const interval = (cfg.pollInterval && Number(cfg.pollInterval) > 5) ? Number(cfg.pollInterval) * 1000 : 30000;
@@ -738,6 +767,38 @@
                     }
                 }
             })();
+
+            // add a small UI to set remote config (binId/apiKey) and save to localStorage
+            function addRemoteConfigButton() {
+                try {
+                    const headerActions = document.querySelector('.header-actions');
+                    if (!headerActions) return;
+                    if (document.getElementById('remoteConfigBtn')) return;
+                    const cfgBtn = document.createElement('button');
+                    cfgBtn.id = 'remoteConfigBtn';
+                    cfgBtn.textContent = 'تكوين المزامنة';
+                    cfgBtn.style.padding = '8px 10px';
+                    cfgBtn.style.borderRadius = '8px';
+                    cfgBtn.style.border = '1px solid #d1d5db';
+                    cfgBtn.style.background = 'white';
+                    cfgBtn.style.cursor = 'pointer';
+                    cfgBtn.onclick = function() {
+                        const bin = prompt('أدخل binId من jsonbin (أو اترك فارغ للتعطيل):', (window.__REMOTE_API_CONFIG && window.__REMOTE_API_CONFIG.binId) || '');
+                        if (!bin) {
+                            localStorage.removeItem('remoteConfig');
+                            window.__REMOTE_API_CONFIG = null;
+                            alert('تم تعطيل المزامنة البعيدة');
+                            return;
+                        }
+                        const key = prompt('أدخل X-Master-Key (master key) من jsonbin:', (window.__REMOTE_API_CONFIG && window.__REMOTE_API_CONFIG.apiKey) || '');
+                        const cfg = { type: 'jsonbin', binId: bin.trim(), apiKey: key ? key.trim() : '', autoPoll: false };
+                        localStorage.setItem('remoteConfig', JSON.stringify(cfg));
+                        window.__REMOTE_API_CONFIG = cfg;
+                        alert('تم حفظ إعدادات المزامنة محلياً. اضغط مزامنة الآن لتحميل المنتجات.');
+                    };
+                    headerActions.insertBefore(cfgBtn, headerActions.firstChild);
+                } catch (e) { console.warn('Could not add remote config button:', e); }
+            }
 
         // Format price function
         function formatPrice(price) {
