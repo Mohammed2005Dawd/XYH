@@ -404,6 +404,44 @@
     </div>
 
     <script>
+        // --- Firebase initialization (paste your project's config in window.__FIREBASE_CONFIG__ or below) ---
+        // To enable real-time shared products across devices, create a Firebase project and paste
+        // the web app config into `window.__FIREBASE_CONFIG__` before this script runs.
+        (function(){
+            // load compat libraries dynamically so we don't require manual script tag edits
+            const loadScript = (src) => new Promise((res, rej) => {
+                const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+            });
+            // try to load firebase compat libs (network required)
+            Promise.all([
+                loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js'),
+                loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js')
+            ]).then(() => {
+                try {
+                    const cfg = window.__FIREBASE_CONFIG__ || {
+                        // <-- REPLACE these with your Firebase web app config OR set window.__FIREBASE_CONFIG__ before this script runs
+                        apiKey: "",
+                        authDomain: "",
+                        projectId: ""
+                    };
+                    if (cfg && cfg.projectId && cfg.apiKey) {
+                        firebase.initializeApp(cfg);
+                        window.__XYH_db = firebase.firestore();
+                        console.log('Firebase initialized (products will sync in real-time).');
+                    } else {
+                        console.warn('Firebase config not provided. Using localStorage-only mode.');
+                        window.__XYH_db = null;
+                    }
+                } catch (e) {
+                    console.warn('Firebase load/init failed:', e);
+                    window.__XYH_db = null;
+                }
+            }).catch(err => {
+                console.warn('Could not load Firebase libraries:', err);
+                window.__XYH_db = null;
+            });
+        })();
+
         // Initialize data from localStorage or create default data
         let products = JSON.parse(localStorage.getItem('products')) || {
             gym: [],
@@ -586,12 +624,26 @@
                 images: imagesData, // array of data URLs (may be empty)
                 image: imagesData.length ? imagesData[0] : '', // keep backward compatible field
                 cottonQuality,
-                sizes
+                sizes,
+                category
             };
 
             products[category].push(newProduct);
             saveProducts();
             loadProductsList();
+
+            // If Firestore is configured, also save to cloud so other users see it
+            (async function(){
+                try {
+                    const db = window.__XYH_db;
+                    if (db) {
+                        await db.collection('products').doc(String(newProduct.id)).set(newProduct);
+                        console.log('Saved product to Firestore:', newProduct.id);
+                    }
+                } catch (err) {
+                    console.warn('Failed to save product to Firestore:', err);
+                }
+            })();
 
             // Reset form
             document.getElementById('addProductForm').reset();
@@ -677,6 +729,18 @@
             saveProducts();
             loadProductsList();
             alert('تم حذف المنتج بنجاح!');
+            // also remove from Firestore if configured
+            (async function(){
+                try {
+                    const db = window.__XYH_db;
+                    if (db) {
+                        await db.collection('products').doc(String(productId)).delete();
+                        console.log('Deleted product from Firestore:', productId);
+                    }
+                } catch (err) {
+                    console.warn('Failed to delete product from Firestore:', err);
+                }
+            })();
         }
 
         // Delete slide function
@@ -837,6 +901,20 @@
 
             saveProducts();
             loadProductsList();
+            // update Firestore document if available
+            (async function(){
+                try {
+                    const db = window.__XYH_db;
+                    if (db) {
+                        const docRef = db.collection('products').doc(String(productId));
+                        await docRef.update({ image: url, images: products[category][idx].images || [url] });
+                        console.log('Updated product image in Firestore:', productId);
+                    }
+                } catch (err) {
+                    console.warn('Failed to update product image in Firestore:', err);
+                }
+            })();
+
             alert('تم تحديث صورة المنتج. يجب أن تظهر الآن في واجهة المتجر بعد تحديث الصفحة.');
         }
 

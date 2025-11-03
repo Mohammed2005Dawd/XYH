@@ -630,6 +630,30 @@
     </footer>
 
     <script>
+        // --- Firebase initialization (paste your project's config into window.__FIREBASE_CONFIG__ before this script runs) ---
+        (function(){
+            const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+            Promise.all([
+                loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js'),
+                loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js')
+            ]).then(() => {
+                try {
+                    const cfg = window.__FIREBASE_CONFIG__ || { apiKey:'', authDomain:'', projectId:'' };
+                    if (cfg && cfg.projectId && cfg.apiKey) {
+                        firebase.initializeApp(cfg);
+                        window.__XYH_db = firebase.firestore();
+                        console.log('Firebase initialized for storefront.');
+                    } else {
+                        window.__XYH_db = null;
+                        console.warn('Firebase not configured for storefront — using localStorage.');
+                    }
+                } catch (e) {
+                    console.warn('Firebase init failed:', e);
+                    window.__XYH_db = null;
+                }
+            }).catch(e => { console.warn('Could not load Firebase libs:', e); window.__XYH_db = null; });
+        })();
+
         // Format price function
         function formatPrice(price) {
             return new Intl.NumberFormat('ar-IQ').format(price);
@@ -756,13 +780,46 @@
 
         // Load all products
         function loadAllProducts() {
-            // Refresh products data from localStorage
-            products = JSON.parse(localStorage.getItem('products')) || {
-                gym: [],
-                dresses: [],
-                printing: [],
-                random: []
-            };
+            // If Firestore is available, listen for real-time updates and build products object
+            const db = window.__XYH_db;
+            if (db) {
+                // listen once and also on subsequent changes
+                db.collection('products').onSnapshot(snapshot => {
+                    // rebuild products object
+                    const newProducts = { gym: [], dresses: [], printing: [], random: [] };
+                    try {
+                        snapshot.forEach(doc => {
+                            const p = doc.data();
+                            // ensure category exists
+                            const cat = p.category || 'random';
+                            if (!newProducts[cat]) newProducts[cat] = [];
+                            // local compatibility: ensure image field present
+                            if ((!p.image || p.image === '') && p.images && p.images.length) p.image = p.images[0];
+                            newProducts[cat].push(p);
+                        });
+                    } catch (err) {
+                        console.error('Error processing Firestore products snapshot:', err);
+                    }
+                    products = newProducts;
+                    // Diagnostic logging
+                    console.groupCollapsed('Products (Firestore) debug');
+                    console.log('products from Firestore:', products);
+                    console.groupEnd();
+
+                    const allProducts = [...products.gym, ...products.dresses, ...products.printing, ...products.random];
+                    displayProducts(allProducts, 'productsGrid');
+                    displayProducts(products.gym, 'gymProducts');
+                    displayProducts(products.dresses, 'dressesProducts');
+                    displayProducts(products.printing, 'printingProducts');
+                    displayProducts(products.random, 'randomProducts');
+                }, err => {
+                    console.error('Firestore onSnapshot error:', err);
+                });
+                return;
+            }
+
+            // Fallback: Refresh products data from localStorage
+            products = JSON.parse(localStorage.getItem('products')) || { gym: [], dresses: [], printing: [], random: [] };
             // Diagnostic logging to help debug missing images
             try {
                 console.groupCollapsed('Products debug');
