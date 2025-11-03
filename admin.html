@@ -324,24 +324,24 @@
                         <input type="number" id="productPrice" required min="0" step="0.01">
                     </div>
                     <div class="form-group">
-                        <label for="productOriginalPrice">السعر الأصلي (د.ع)</label>
-                        <input type="number" id="productOriginalPrice" min="0" step="0.01">
+                        <label for="cottonQuality">نوعية القطن</label>
+                        <input type="text" id="cottonQuality" placeholder="مثال: قطن 100% أو مزيج بولي/قطن">
                     </div>
                     <div class="form-group">
-                        <label for="productRating">التقييم (1-5)</label>
-                        <input type="number" id="productRating" min="1" max="5" step="0.1" value="4.0">
+                        <label for="availableSizes">الأحجام المتوفرة (افصل بفواصل)</label>
+                        <input type="text" id="availableSizes" placeholder="مثال: S,M,L,XL">
                     </div>
                 </div>
                 
                 <div class="form-group">
                     <label for="productImage">تحميل صورة المنتج</label>
-                    <div class="file-input-wrapper">
-                        <input type="file" id="productImage" accept="image/*" required>
-                        <div class="file-input-button">اختر صورة</div>
+                        <div class="file-input-wrapper">
+                        <input type="file" id="productImage" accept="image/*" multiple required>
+                        <div class="file-input-button">اختر صور (يمكن اختيار أكثر من صورة)</div>
                     </div>
-                    <div class="file-name" id="productFileName">لم يتم اختيار ملف</div>
+                    <div class="file-name" id="productFileName">لم يتم اختيار ملفات</div>
                     <div class="image-preview" id="productPreview">
-                        <p>معاينة الصورة</p>
+                        <p>معاينة الصور</p>
                     </div>
                 </div>
                 
@@ -455,19 +455,40 @@
             });
         });
 
-        // Handle image upload and preview
+        // Handle image upload and preview (supports multiple files)
         function handleImageUpload(event, previewId, fileNameId) {
-            const file = event.target.files[0];
-            if (file) {
-                document.getElementById(fileNameId).textContent = file.name;
+            const files = Array.from(event.target.files || []);
+            const preview = document.getElementById(previewId);
+            const fileNameEl = document.getElementById(fileNameId);
+            if (files.length === 0) {
+                fileNameEl.textContent = 'لم يتم اختيار ملفات';
+                preview.innerHTML = '<p>معاينة الصور</p>';
+                return;
+            }
 
+            fileNameEl.textContent = files.length + ' ملفات مختارة';
+            // show thumbnails
+            preview.innerHTML = '';
+            files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const preview = document.getElementById(previewId);
-                    preview.innerHTML = `<img src="${e.target.result}" alt="معاينة الصورة">`;
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = 'معاينة الصورة';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    const wrap = document.createElement('div');
+                    wrap.style.width = '100px';
+                    wrap.style.height = '100px';
+                    wrap.style.overflow = 'hidden';
+                    wrap.style.borderRadius = '6px';
+                    wrap.style.marginRight = '8px';
+                    wrap.appendChild(img);
+                    preview.appendChild(wrap);
                 };
                 reader.readAsDataURL(file);
-            }
+            });
         }
 
         // Resize/compress an image File to a dataURL. Returns Promise<string>
@@ -510,64 +531,62 @@
             const name = document.getElementById('productName').value;
             const category = document.getElementById('productCategory').value;
             const price = parseFloat(document.getElementById('productPrice').value);
-            const originalPrice = parseFloat(document.getElementById('productOriginalPrice').value) || price;
-            const rating = parseFloat(document.getElementById('productRating').value) || 4.0;
-            const imageFile = document.getElementById('productImage').files[0];
+            const imageFiles = Array.from(document.getElementById('productImage').files || []);
+            const cottonQuality = document.getElementById('cottonQuality').value || '';
+            const sizesRaw = document.getElementById('availableSizes').value || '';
+            const sizes = sizesRaw.split(',').map(s => s.trim()).filter(Boolean);
 
-            if (!imageFile) {
-                alert('يرجى تحميل صورة المنتج');
-                return;
+            if (imageFiles.length === 0) {
+                if (!confirm('لم يتم اختيار صور للمنتج. هل تريد حفظ المنتج بدون صور؟')) return;
             }
 
-            const MAX_DATAURL_LENGTH = 150000; // ~150 KB safe threshold
+            const MAX_DATAURL_LENGTH = 150000; // ~150 KB safe threshold per image
             const compressSteps = [ {dim:1024, q:0.85}, {dim:800, q:0.75}, {dim:600, q:0.7}, {dim:400, q:0.65} ];
-            let dataUrl = null;
-            try {
-                for (const step of compressSteps) {
-                    dataUrl = await resizeImageFile(imageFile, step.dim, step.q);
-                    if (!dataUrl || dataUrl.length <= MAX_DATAURL_LENGTH) break;
-                }
-            } catch (err) {
-                console.warn('Image resize failed, falling back to raw data URL:', err);
-            }
+            const imagesData = [];
 
-            // If still too big, ask admin what to do
-            if (dataUrl && dataUrl.length > MAX_DATAURL_LENGTH) {
-                const keep = confirm('صورة المنتج كبيرة جداً وقد تملأ ذاكرة المتصفح. اضغط موافق لمحاولة الحفظ بدون الصورة، أو إلغاء لإعادة اختيار صورة أصغر.');
-                if (!keep) return; // admin cancelled to choose another image
-                // save without image
-                dataUrl = '';
-            }
-
-            // If resize failed earlier, fallback to reading raw data URL once
-            if (!dataUrl) {
+            for (const file of imageFiles) {
+                let dataUrl = null;
                 try {
-                    dataUrl = await new Promise((resolve, reject) => {
-                        const r = new FileReader();
-                        r.onload = () => resolve(r.result);
-                        r.onerror = reject;
-                        r.readAsDataURL(imageFile);
-                    });
-                    // final length check
-                    if (dataUrl.length > MAX_DATAURL_LENGTH) {
-                        const keep2 = confirm('الصورة بعد التحويل ما تزال كبيرة. حفظ المنتج بدون صورة؟ موافق=حفظ بدون صورة، إلغاء=إلغاء.');
-                        if (!keep2) return;
-                        dataUrl = '';
+                    for (const step of compressSteps) {
+                        dataUrl = await resizeImageFile(file, step.dim, step.q);
+                        if (!dataUrl || dataUrl.length <= MAX_DATAURL_LENGTH) break;
                     }
                 } catch (err) {
-                    console.error('Failed to read image file as data URL:', err);
-                    alert('تعذر معالجة الصورة. حاول مجدداً بصورة أصغر.');
-                    return;
+                    console.warn('Image resize failed for one file, falling back to raw data URL:', err);
                 }
+
+                if (!dataUrl) {
+                    try {
+                        dataUrl = await new Promise((resolve, reject) => {
+                            const r = new FileReader();
+                            r.onload = () => resolve(r.result);
+                            r.onerror = reject;
+                            r.readAsDataURL(file);
+                        });
+                    } catch (err) {
+                        console.error('Failed to read image file as data URL:', err);
+                        // skip this image and continue
+                        continue;
+                    }
+                }
+
+                // if still too big, ask admin whether to keep or skip
+                if (dataUrl && dataUrl.length > MAX_DATAURL_LENGTH) {
+                    const keep = confirm('إحدى صور المنتج كبيرة جداً وقد تملأ ذاكرة المتصفح. اضغط موافق للاحتفاظ بهذه الصورة (قد تفشل الحفظ)، إلغاء لتخطي هذه الصورة.');
+                    if (!keep) continue; // skip oversized image
+                }
+
+                if (dataUrl) imagesData.push(dataUrl);
             }
 
             const newProduct = {
                 id: Date.now(),
                 name,
                 price,
-                originalPrice,
-                rating,
-                image: dataUrl
+                images: imagesData, // array of data URLs (may be empty)
+                image: imagesData.length ? imagesData[0] : '', // keep backward compatible field
+                cottonQuality,
+                sizes
             };
 
             products[category].push(newProduct);
@@ -701,7 +720,7 @@
                 try {
                     const stripped = {};
                     for (const cat in products) {
-                        stripped[cat] = products[cat].map(({ id, name, price, originalPrice, rating }) => ({ id, name, price, originalPrice, rating }));
+                        stripped[cat] = products[cat].map(({ id, name, price, cottonQuality, sizes }) => ({ id, name, price, cottonQuality, sizes }));
                     }
                     localStorage.setItem('products', JSON.stringify(stripped));
                     // update in-memory products to stripped version
@@ -776,11 +795,13 @@
                         <div style="width:80px;height:80px;flex-shrink:0;overflow:hidden;border-radius:6px;border:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:center;">
                             <img src="${imgSrc}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='${placeholder}';">
                         </div>
-                        <div class="product-info">
-                            <div class="product-name">${product.name}</div>
-                            <div class="product-price">${product.price} د.ع ${product.originalPrice > product.price ? `<span style=\"color: #9ca3af; text-decoration: line-through; margin-right: 10px;\">${product.originalPrice} د.ع</span>` : ''}</div>
-                            <div class="product-category">التصنيف: ${product.category}</div>
-                        </div>
+                                <div class="product-info">
+                                    <div class="product-name">${product.name}</div>
+                                    <div class="product-price">${product.price} د.ع</div>
+                                    <div class="product-category">التصنيف: ${product.category}</div>
+                                    <div style="color:#6b7280;font-size:0.9rem;margin-top:6px">نوع القطن: ${product.cottonQuality || 'غير محدد'}</div>
+                                    <div style="color:#6b7280;font-size:0.9rem;margin-top:4px">الأحجام: ${product.sizes && product.sizes.length ? product.sizes.join(', ') : 'غير محدد'}</div>
+                                </div>
                     </div>
                     <div class="product-actions">
                         <button class="btn btn-danger" onclick="deleteProduct('${product.category}', ${product.id})">حذف</button>

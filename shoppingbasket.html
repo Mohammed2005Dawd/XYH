@@ -366,14 +366,15 @@
                         <img src="${item.image}" alt="${item.name}" class="cart-item-image">
                         <div class="cart-item-info">
                             <div class="cart-item-name">${item.name}</div>
+                            <div style="color:#6b7280;margin-top:6px">الحجم: ${item.size ? item.size : '-'}</div>
                             <div class="cart-item-price">${formatPrice(item.price)} د.ع</div>
                             <div class="cart-item-quantity">
-                                <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)" aria-label="تقليل الكمية">-</button>
-                                <input type="number" class="quantity-input" value="${item.quantity}" min="1" onchange="changeQuantity(${item.id}, this.value)" aria-label="الكمية">
-                                <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)" aria-label="زيادة الكمية">+</button>
+                                <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${JSON.stringify(item.size || '')}, ${JSON.stringify(item.image || '')}, -1)" aria-label="تقليل الكمية">-</button>
+                                <input type="number" class="quantity-input" value="${item.quantity}" min="1" onchange="changeQuantity(${item.id}, ${JSON.stringify(item.size || '')}, ${JSON.stringify(item.image || '')}, this.value)" aria-label="الكمية">
+                                <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${JSON.stringify(item.size || '')}, ${JSON.stringify(item.image || '')}, 1)" aria-label="زيادة الكمية">+</button>
                             </div>
                         </div>
-                        <button class="remove-btn" onclick="removeFromCart(${item.id})">حذف</button>
+                        <button class="remove-btn" onclick="removeFromCart(${item.id}, ${JSON.stringify(item.size || '')}, ${JSON.stringify(item.image || '')})">حذف</button>
                     </div>
                 `;
             });
@@ -393,38 +394,86 @@
         }
 
         // Update quantity function
-        function updateQuantity(productId, change) {
-            const itemIndex = cart.findIndex(item => item.id === productId);
+        // Update quantity for a specific productId, size and image
+        // Flexible signature for backward compatibility:
+        // updateQuantity(productId, change)
+        // updateQuantity(productId, size, change)
+        // updateQuantity(productId, size, image, change)
+        function updateQuantity(productId, sizeOrChange, imageOrChange, maybeChange) {
+            let size = '';
+            let image = '';
+            let change = 0;
+
+            if (typeof sizeOrChange === 'number') {
+                // updateQuantity(productId, change)
+                change = sizeOrChange;
+            } else if (typeof imageOrChange === 'number' && typeof sizeOrChange === 'string') {
+                // updateQuantity(productId, size, change)
+                size = sizeOrChange;
+                change = imageOrChange;
+            } else {
+                // updateQuantity(productId, size, image, change)
+                size = (sizeOrChange && typeof sizeOrChange === 'string') ? sizeOrChange : '';
+                image = (imageOrChange && typeof imageOrChange === 'string') ? imageOrChange : '';
+                change = maybeChange || 0;
+            }
+
+            const itemIndex = cart.findIndex(item => item.id === productId && (item.size || '') === (size || '') && (item.image || '') === (image || ''));
             if (itemIndex !== -1) {
                 cart[itemIndex].quantity += change;
-                
+
                 if (cart[itemIndex].quantity < 1) {
                     cart[itemIndex].quantity = 1;
                 }
-                
+
                 saveCart();
                 renderCart();
             }
         }
 
         // Change quantity function
-        function changeQuantity(productId, newQuantity) {
-            const itemIndex = cart.findIndex(item => item.id === productId);
+        // Change quantity for a specific id, size and image
+        // Signatures supported:
+        // changeQuantity(productId, newQuantity)
+        // changeQuantity(productId, size, newQuantity)
+        // changeQuantity(productId, size, image, newQuantity)
+        function changeQuantity(productId, sizeOrNewQ, imageOrNewQ, maybeNewQ) {
+            let size = '';
+            let image = '';
+            let newQuantity = 1;
+
+            if (typeof sizeOrNewQ === 'number' || !isNaN(parseInt(sizeOrNewQ))) {
+                // changeQuantity(productId, newQuantity)
+                newQuantity = parseInt(sizeOrNewQ) || 1;
+            } else if (typeof imageOrNewQ === 'number' || !isNaN(parseInt(imageOrNewQ))) {
+                // changeQuantity(productId, size, newQuantity)
+                size = sizeOrNewQ;
+                newQuantity = parseInt(imageOrNewQ) || 1;
+            } else {
+                // changeQuantity(productId, size, image, newQuantity)
+                size = (sizeOrNewQ && typeof sizeOrNewQ === 'string') ? sizeOrNewQ : '';
+                image = (imageOrNewQ && typeof imageOrNewQ === 'string') ? imageOrNewQ : '';
+                newQuantity = parseInt(maybeNewQ) || 1;
+            }
+
+            const itemIndex = cart.findIndex(item => item.id === productId && (item.size || '') === (size || '') && (item.image || '') === (image || ''));
             if (itemIndex !== -1) {
                 cart[itemIndex].quantity = parseInt(newQuantity) || 1;
-                
+
                 if (cart[itemIndex].quantity < 1) {
                     cart[itemIndex].quantity = 1;
                 }
-                
+
                 saveCart();
                 renderCart();
             }
         }
 
         // Remove from cart function
-        function removeFromCart(productId) {
-            cart = cart.filter(item => item.id !== productId);
+        function removeFromCart(productId, size, image) {
+            if (typeof size === 'undefined') size = '';
+            if (typeof image === 'undefined') image = '';
+            cart = cart.filter(item => !(item.id === productId && (item.size || '') === (size || '') && (item.image || '') === (image || '')));
             saveCart();
             renderCart();
         }
@@ -469,7 +518,7 @@
                 
                 orderSummaryHTML += `
                     <div class="order-item">
-                        <span>${item.name} × ${item.quantity}</span>
+                        <span>${item.name}${item.size ? ' ('+item.size+')' : ''} × ${item.quantity}</span>
                         <span>${formatPrice(itemTotal)} د.ع</span>
                     </div>
                 `;
@@ -514,7 +563,9 @@
                 items: cart.map(item => ({
                     name: item.name,
                     price: item.price,
-                    quantity: item.quantity
+                    quantity: item.quantity,
+                    size: item.size || '',
+                    image: item.image || ''
                 })),
                 total: total,
                 status: 'pending',
@@ -534,7 +585,8 @@
             
             orderDetails += `📋 تفاصيل الطلب:\n`;
             cart.forEach(item => {
-                orderDetails += `- ${item.name}: ${item.quantity} × ${item.price} د.ع = ${(item.price * item.quantity).toFixed(2)} د.ع\n`;
+                const nameWithSize = item.name + (item.size ? ` (${item.size})` : '');
+                orderDetails += `- ${nameWithSize}: ${item.quantity} × ${item.price} د.ع = ${(item.price * item.quantity).toFixed(2)} د.ع\n`;
             });
             
             orderDetails += `\n💰 المجموع: ${total.toFixed(2)} د.ع`;

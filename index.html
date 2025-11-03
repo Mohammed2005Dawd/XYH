@@ -111,9 +111,9 @@
         /* Hero Slider */
         .hero-slider {
             position: relative;
-            height: 500px;
+            height: 320px; /* smaller hero to reduce vertical space */
             overflow: hidden;
-            margin-bottom: 40px;
+            margin-bottom: 24px;
         }
 
         .slide {
@@ -136,31 +136,22 @@
         }
 
         .slide-content {
-            background-color: rgba(0,0,0,0.4);
+            background-color: rgba(0,0,0,0.35);
             color: white;
-            padding: 40px;
-            border-radius: 10px;
+            padding: 18px;
+            border-radius: 8px;
             text-align: center;
-            max-width: 600px;
+            max-width: 520px;
         }
 
         .slide-content h2 {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
+            font-size: 1.6rem;
+            margin-bottom: 10px;
         }
 
         .slide-content p {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-        }
-
-        .discount-badge {
-            background-color: #ef4444;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: bold;
-            display: inline-block;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
         }
 
         .slider-indicators {
@@ -229,27 +220,29 @@
 
         .products-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 25px;
-            margin-bottom: 50px;
+            /* smaller cards to fit more items */
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 30px;
         }
 
         .product-card {
             background-color: white;
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            transition: transform 0.18s, box-shadow 0.18s;
+            cursor: pointer;
         }
 
         .product-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.12);
         }
 
         .product-image {
             width: 100%;
-            height: 200px;
+            height: 120px;
             object-fit: cover;
             position: relative;
         }
@@ -266,13 +259,13 @@
         }
 
         .product-info {
-            padding: 20px;
+            padding: 10px;
         }
 
         .product-name {
             font-weight: bold;
-            font-size: 1.1rem;
-            margin-bottom: 10px;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
         }
 
         .product-rating {
@@ -301,7 +294,7 @@
         .price {
             color: #ef4444;
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
         }
 
         .original-price {
@@ -373,6 +366,12 @@
         }
 
         /* Responsive Design */
+        @media (max-width: 1024px) {
+            .hero-slider { height: 260px; }
+            .product-image { height: 110px; }
+            .products-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        }
+
         @media (max-width: 768px) {
             .nav-menu {
                 display: none;
@@ -383,16 +382,94 @@
             }
 
             .search-box input {
-                width: 180px;
+                width: 140px;
             }
 
-            .slide-content h2 {
-                font-size: 1.8rem;
-            }
+            .hero-slider { height: 220px; }
+            .slide-content { padding: 12px; }
+            .slide-content h2 { font-size: 1.2rem; }
+            .slide-content p { font-size: 0.9rem; }
 
-            .slide-content p {
-                font-size: 1rem;
-            }
+            /* make cards more compact on phones */
+            .products-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+            .product-image { height: 100px; }
+            .product-info { padding: 8px; }
+            .product-name { font-size: 0.95rem; }
+            .price { font-size: 0.95rem; }
+        }
+
+        @media (max-width: 420px) {
+            .products-grid { grid-template-columns: 1fr; }
+            .product-image { height: 160px; }
+            .hero-slider { height: 180px; }
+        }
+        /* Product modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .product-modal {
+            background: white;
+            max-width: 900px;
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .product-modal .left {
+            flex: 1 1 50%;
+            min-width: 280px;
+            background: #fafafa;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding: 16px;
+        }
+
+        .product-modal .left img {
+            max-width: 100%;
+            max-height: 420px;
+            object-fit: contain;
+        }
+
+        .product-modal .right {
+            flex: 1 1 50%;
+            padding: 20px;
+        }
+
+        .sizes-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .size-btn {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .size-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
         }
     </style>
 </head>
@@ -490,6 +567,28 @@
     </section>
 
     <!-- Footer -->
+    <!-- Product Modal -->
+    <div id="productModal" class="modal-overlay" onclick="if(event.target.id==='productModal') closeProductModal();">
+        <div class="product-modal" role="dialog" aria-modal="true">
+            <div class="left">
+                <img id="modalImage" src="./assets/placeholder.svg" alt="صورة المنتج">
+            </div>
+            <div class="right">
+                <h2 id="modalName"></h2>
+                <div style="margin-top:10px;font-size:1.05rem;color:#ef4444;font-weight:700" id="modalPrice"></div>
+                <div style="margin-top:8px;color:#6b7280" id="modalCotton"></div>
+                <div style="margin-top:12px">الأحجام:</div>
+                <div id="modalSizes" class="sizes-list"></div>
+                <div style="margin-top:16px">الكمية:</div>
+                <input id="modalQuantity" type="number" value="1" min="1" style="width:80px;margin-top:8px;padding:8px;border:1px solid #d1d5db;border-radius:6px">
+                <div style="margin-top:18px;display:flex;gap:10px;align-items:center">
+                    <button id="modalAddBtn" class="buy-btn">أضف للسلة</button>
+                    <button class="btn" onclick="closeProductModal()">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <div class="container">
             <div class="footer-content">
@@ -611,7 +710,7 @@
                     <div class="slide-content">
                         <h2>${slide.title}</h2>
                         <p>${slide.subtitle}</p>
-                        <div class="discount-badge">${slide.discount} خصم</div>
+                
                     </div>
                 `;
                 
@@ -701,36 +800,29 @@
 
                 // Use a local placeholder when image is missing or was stripped to avoid broken images / quota issues
                 const placeholder = './assets/placeholder.svg';
-                const imgSrc = (product.image && product.image.length) ? product.image : placeholder;
+                // prefer new `images` array (multiple images), fall back to `image`
+                const imgSrc = (product.images && product.images.length) ? product.images[0] : ((product.image && product.image.length) ? product.image : placeholder);
 
                 const productCard = document.createElement('div');
                 productCard.className = 'product-card';
+                // clicking the card opens a larger modal view where user can choose size and add to cart
                 productCard.innerHTML = `
                     <div class="product-image-container">
                         <img src="${imgSrc}" alt="${product.name}" class="product-image" onerror="this.onerror=null;this.src='${placeholder}';">
-                        ${discount > 0 ? `<div class="discount-tag">${discount}% خصم</div>` : ''}
+                        
                     </div>
                     <div class="product-info">
                         <h3 class="product-name">${product.name}</h3>
-                        <div class="product-rating">
-                            <div class="rating-text">(${product.rating})</div>
-                            <div class="stars">
-                                ${generateStars(product.rating)}
-                            </div>
-                        </div>
                         <div class="product-price">
                             <div>
                                 <span class="price">${formatPrice(product.price)} د.ع</span>
-                                ${product.originalPrice > product.price ? 
-                                    `<span class="original-price">${formatPrice(product.originalPrice)} د.ع</span>` : ''}
                             </div>
-                            <button class="buy-btn" onclick="addToCart(${product.id}); updateCartCount();">
-                                <span>🛒</span>
-                                أضف للسلة
-                            </button>
+                            <div style="color:#6b7280;font-size:0.85rem">${product.cottonQuality || ''}</div>
                         </div>
                     </div>
                 `;
+                productCard.setAttribute('data-id', product.id);
+                productCard.addEventListener('click', () => openProductModal(product.id));
                 container.appendChild(productCard);
             });
         }
@@ -762,8 +854,8 @@
             }
         }
 
-        // Add to cart function
-        function addToCart(productId) {
+        // Add to cart function (accepts optional chosenSize and chosenImage)
+        function addToCart(productId, chosenSize, chosenImage) {
             // Get cart from localStorage or create new one
             let cart = JSON.parse(localStorage.getItem('cart')) || [];
             
@@ -772,9 +864,13 @@
             const product = allProducts.find(p => p.id === productId);
             
             if (product) {
-                // Check if product already exists in cart
-                const existingItem = cart.find(item => item.id === productId);
-                
+                // Use chosenSize if provided; otherwise undefined
+                const size = chosenSize || '';
+                // determine image to store: prefer chosenImage, then product.images[0], then product.image
+                const imgToUse = chosenImage || ((product.images && product.images.length) ? product.images[0] : (product.image || ''));
+                // Check if product with same size already exists in cart
+                const existingItem = cart.find(item => item.id === productId && (item.size || '') === size && (item.image || '') === imgToUse);
+
                 if (existingItem) {
                     existingItem.quantity += 1;
                 } else {
@@ -782,7 +878,8 @@
                         id: product.id,
                         name: product.name,
                         price: product.price,
-                        image: product.image,
+                        image: imgToUse,
+                        size: size,
                         quantity: 1
                     });
                 }
@@ -879,6 +976,118 @@
             const navMenu = document.querySelector('.nav-menu');
             navMenu.style.display = navMenu.style.display === 'flex' ? 'none' : 'flex';
         });
+
+        // Product modal logic
+        function openProductModal(productId) {
+            const allProducts = Object.values(products).flat();
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+
+            const placeholder = './assets/placeholder.svg';
+            // gather images (product may have images[] or single image)
+            const imgs = (product.images && product.images.length) ? product.images.slice() : (product.image ? [product.image] : []);
+            let selectedImage = imgs.length ? imgs[0] : placeholder;
+            document.getElementById('modalImage').src = selectedImage;
+            document.getElementById('modalImage').alt = product.name;
+            document.getElementById('modalName').textContent = product.name;
+            document.getElementById('modalPrice').textContent = formatPrice(product.price) + ' د.ع';
+            document.getElementById('modalCotton').textContent = product.cottonQuality ? 'نوع القطن: ' + product.cottonQuality : '';
+            document.getElementById('modalQuantity').value = 1;
+
+            // render thumbnails area inside left column (create if missing)
+            const leftCol = document.querySelector('.product-modal .left');
+            let thumbs = document.getElementById('modalThumbnails');
+            if (!thumbs) {
+                thumbs = document.createElement('div');
+                thumbs.id = 'modalThumbnails';
+                thumbs.style.display = 'flex';
+                thumbs.style.gap = '8px';
+                thumbs.style.marginTop = '10px';
+                thumbs.style.flexWrap = 'wrap';
+                leftCol.appendChild(thumbs);
+            }
+            thumbs.innerHTML = '';
+            imgs.forEach((src, idx) => {
+                const t = document.createElement('img');
+                t.src = src;
+                t.alt = product.name + ' - ' + (idx+1);
+                t.style.width = '64px';
+                t.style.height = '64px';
+                t.style.objectFit = 'cover';
+                t.style.border = (src === selectedImage) ? '2px solid #3b82f6' : '1px solid #e5e7eb';
+                t.style.borderRadius = '6px';
+                t.style.cursor = 'pointer';
+                t.addEventListener('click', () => {
+                    selectedImage = src;
+                    document.getElementById('modalImage').src = selectedImage;
+                    // update borders
+                    Array.from(thumbs.children).forEach(ch => ch.style.border = '1px solid #e5e7eb');
+                    t.style.border = '2px solid #3b82f6';
+                });
+                thumbs.appendChild(t);
+            });
+
+            // render sizes
+            const sizesContainer = document.getElementById('modalSizes');
+            sizesContainer.innerHTML = '';
+            let selectedSize = '';
+            if (product.sizes && product.sizes.length) {
+                product.sizes.forEach(sz => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'size-btn';
+                    b.textContent = sz;
+                    b.addEventListener('click', () => {
+                        // toggle active class
+                        Array.from(sizesContainer.children).forEach(c => c.classList.remove('active'));
+                        b.classList.add('active');
+                        selectedSize = sz;
+                    });
+                    sizesContainer.appendChild(b);
+                });
+            } else {
+                const p = document.createElement('div');
+                p.style.color = '#6b7280';
+                p.textContent = 'غير محدد';
+                sizesContainer.appendChild(p);
+            }
+
+            // hook add button
+            const addBtn = document.getElementById('modalAddBtn');
+            addBtn.onclick = function() {
+                const qty = parseInt(document.getElementById('modalQuantity').value) || 1;
+                // if product has sizes and none selected, alert
+                if (product.sizes && product.sizes.length && !selectedSize) {
+                    alert('يرجى اختيار الحجم قبل الإضافة إلى السلة');
+                    return;
+                }
+                // determine image to use (selectedImage variable)
+                const imgToUse = selectedImage || '';
+                // add item with selected size and image
+                addToCart(product.id, selectedSize, imgToUse);
+                // set the last added item's quantity to qty (if >1)
+                if (qty > 1) {
+                    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+                    // find item by id, size and image
+                    const it = cart.find(i => i.id === product.id && (i.size || '') === (selectedSize || '') && (i.image || '') === imgToUse);
+                    if (it) it.quantity = qty;
+                    try {
+                        localStorage.setItem('cart', JSON.stringify(cart));
+                    } catch (e) {
+                        console.warn('Could not save cart quantity change:', e);
+                    }
+                }
+                updateCartCount();
+                closeProductModal();
+                alert('تمت إضافة المنتج إلى السلة');
+            };
+
+            document.getElementById('productModal').classList.add('active');
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').classList.remove('active');
+        }
     </script>
 </body>
 </html>
